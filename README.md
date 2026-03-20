@@ -3,8 +3,8 @@
 A minimal trustless escrow dApp on the Rootstock blockchain. Lock RBTC for a freelancer, release when work is done — or refund if it isn't.
 
 ## Live on Rootstock Testnet
-> Contract: `[paste address after deploy]`
-> Explorer: https://explorer.testnet.rootstock.io
+> Contract: `0x593e4Ca205d04F1FA4D7Db94C5690747d18b8DA1`
+> Explorer: https://explorer.testnet.rootstock.io/address/0x593e4ca205d04f1fa4d7db94c5690747d18b8da1
 
 ---
 
@@ -12,7 +12,7 @@ A minimal trustless escrow dApp on the Rootstock blockchain. Lock RBTC for a fre
 
 ### 1. Clone & Install
 ```bash
-git clone https://github.com/yourusername/agentpay-rsk
+git clone https://github.com/Smartdevs17/agentpay-rsk
 cd agentpay-rsk
 npm install
 cd frontend && npm install
