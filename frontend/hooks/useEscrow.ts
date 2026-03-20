@@ -12,6 +12,29 @@ export type EscrowJob = {
   createdAt: bigint;
 };
 
+function parseError(err: any): string {
+  const msg = err?.message || err?.reason || String(err);
+  if (msg.includes("user rejected") || msg.includes("ACTION_REJECTED") || err?.code === 4001 || err?.code === "ACTION_REJECTED") {
+    return "Transaction rejected by user.";
+  }
+  if (msg.includes("insufficient funds")) {
+    return "Insufficient RBTC balance for this transaction.";
+  }
+  if (msg.includes("Not the client")) {
+    return "Only the escrow client can perform this action.";
+  }
+  if (msg.includes("not in Funded state")) {
+    return "This escrow has already been settled.";
+  }
+  if (msg.includes("network") || msg.includes("timeout")) {
+    return "Network error. Please check your connection and try again.";
+  }
+  // Fallback: take first sentence, cap at 120 chars
+  const clean = msg.replace(/\{[\s\S]*\}/g, "").replace(/\([\s\S]*\)/g, "").trim();
+  const first = clean.split(/[.!]/)[0]?.trim();
+  return first?.length > 10 ? first.slice(0, 120) : "Transaction failed. Please try again.";
+}
+
 export function useEscrow() {
   const [address, setAddress] = useState<string | null>(null);
   const [escrows, setEscrows] = useState<EscrowJob[]>([]);
@@ -78,7 +101,7 @@ export function useEscrow() {
       return accounts[0];
     } catch (err: any) {
       console.error("Connection error:", err);
-      setError(err.message || "Failed to connect wallet");
+      setError(parseError(err));
       return null;
     }
   }, []);
@@ -123,7 +146,7 @@ export function useEscrow() {
       }
       setFreelancerEscrows(freelancerResults);
     } catch (err: any) {
-      setError(err.message);
+      setError(parseError(err));
     } finally {
       setLoading(false);
     }
@@ -145,7 +168,7 @@ export function useEscrow() {
         wait: async () => { await tx.wait(); return true; },
       };
     } catch (err: any) {
-      setError(err.message);
+      setError(parseError(err));
       setLoading(false);
       return { submitted: false, wait: async () => false };
     }
@@ -163,7 +186,7 @@ export function useEscrow() {
         wait: async () => { await tx.wait(); return true; },
       };
     } catch (err: any) {
-      setError(err.message);
+      setError(parseError(err));
       setLoading(false);
       return { submitted: false, wait: async () => false };
     }
@@ -181,7 +204,7 @@ export function useEscrow() {
         wait: async () => { await tx.wait(); return true; },
       };
     } catch (err: any) {
-      setError(err.message);
+      setError(parseError(err));
       setLoading(false);
       return { submitted: false, wait: async () => false };
     }
@@ -217,14 +240,9 @@ export function useEscrow() {
         setAddress(accs[0]);
       }
     };
-    const handleChainChanged = () => {
-      window.location.reload();
-    };
     window.ethereum.on?.("accountsChanged", handleAccountsChanged);
-    window.ethereum.on?.("chainChanged", handleChainChanged);
     return () => {
       window.ethereum?.removeListener?.("accountsChanged", handleAccountsChanged);
-      window.ethereum?.removeListener?.("chainChanged", handleChainChanged);
     };
   }, [disconnect]);
 
