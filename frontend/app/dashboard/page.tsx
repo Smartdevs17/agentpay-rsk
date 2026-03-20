@@ -39,19 +39,25 @@ export default function DashboardPage() {
     const released = allClient.filter(e => Number(e.status) === 1);
     const refunded = allClient.filter(e => Number(e.status) === 2);
 
-    const totalLocked = funded.reduce((sum, e) => sum + e.amount, BigInt(0));
-    const totalReleased = released.reduce((sum, e) => sum + e.amount, BigInt(0));
-    const totalEarned = allFreelancer
-      .filter(e => Number(e.status) === 1)
-      .reduce((sum, e) => sum + e.amount, BigInt(0));
+    const safeSum = (list: EscrowJob[]) => list.reduce((sum, e) => {
+      try { return sum + BigInt(e.amount); } catch { return sum; }
+    }, BigInt(0));
+
+    const totalLocked = safeSum(funded);
+    const totalReleased = safeSum(released);
+    const totalEarned = safeSum(allFreelancer.filter(e => Number(e.status) === 1));
+
+    const safeFormat = (wei: bigint) => {
+      try { return parseFloat(formatEther(wei)).toFixed(6); } catch { return "0.000000"; }
+    };
 
     return {
-      totalLocked: parseFloat(formatEther(totalLocked)).toFixed(6),
+      totalLocked: safeFormat(totalLocked),
       pendingCount: funded.length,
       releasedCount: released.length,
       refundedCount: refunded.length,
-      totalReleased: parseFloat(formatEther(totalReleased)).toFixed(6),
-      totalEarned: parseFloat(formatEther(totalEarned)).toFixed(6),
+      totalReleased: safeFormat(totalReleased),
+      totalEarned: safeFormat(totalEarned),
       freelancerPending: allFreelancer.filter(e => Number(e.status) === 0).length,
     };
   }, [escrows, freelancerEscrows, applyOptimistic]);
@@ -277,7 +283,7 @@ export default function DashboardPage() {
                   <div className="space-y-1 mb-6">
                     <div className="flex items-baseline gap-2">
                       <span className="text-2xl font-bold tracking-tight">
-                        {parseFloat(formatEther(escrow.amount)).toFixed(6)}
+                        {(() => { try { return parseFloat(formatEther(BigInt(escrow.amount))).toFixed(6); } catch { return "0.000000"; } })()}
                       </span>
                       <span className="text-xs font-bold text-white/30 uppercase tracking-widest">RBTC</span>
                     </div>

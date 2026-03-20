@@ -83,31 +83,42 @@ export function useEscrow() {
     }
   }, []);
 
+  const normalizeEscrow = (e: any): EscrowJob => ({
+    id: BigInt(e.id),
+    client: String(e.client),
+    freelancer: String(e.freelancer),
+    amount: BigInt(e.amount),
+    status: Number(e.status),
+    createdAt: BigInt(e.createdAt),
+  });
+
   const fetchEscrows = useCallback(async (userAddress: string) => {
     try {
       setLoading(true);
+      setError(null);
       const contract = await getContract();
       const addr = userAddress.toLowerCase();
 
       // Fetch escrows where user is the client
       const clientResult = await contract.getEscrowsByClient(userAddress);
-      setEscrows(clientResult as EscrowJob[]);
+      const clientEscrows = Array.from(clientResult).map(normalizeEscrow);
+      setEscrows(clientEscrows);
 
       // Fetch all escrows and filter for freelancer role
       const count = await contract.escrowCount();
       const total = Number(count);
       const freelancerResults: EscrowJob[] = [];
       for (let i = 0; i < total; i++) {
-        const e = await contract.escrows(i);
-        if (e.freelancer.toLowerCase() === addr) {
-          freelancerResults.push({
-            id: e.id,
-            client: e.client,
-            freelancer: e.freelancer,
-            amount: e.amount,
-            status: Number(e.status),
-            createdAt: e.createdAt,
-          });
+        try {
+          const e = await contract.escrows(i);
+          if (String(e[2]).toLowerCase() === addr) {
+            freelancerResults.push(normalizeEscrow({
+              id: e[0], client: e[1], freelancer: e[2],
+              amount: e[3], status: e[4], createdAt: e[5],
+            }));
+          }
+        } catch {
+          // Skip unreadable escrows
         }
       }
       setFreelancerEscrows(freelancerResults);
