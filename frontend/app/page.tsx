@@ -56,7 +56,7 @@ export default function Home() {
                 Launch Dashboard
                 <ArrowRight className="ml-2 h-5 w-5" />
               </PremiumButton>
-              <PremiumButton variant="outline" size="lg" onClick={() => window.open('https://explorer.testnet.rootstock.io/address/0x593e4ca205d04f1fa4d7db94c5690747d18b8da1', '_blank')}>
+              <PremiumButton variant="outline" size="lg" onClick={() => window.open('https://rootstock-testnet.blockscout.com/address/0x593e4Ca205d04F1FA4D7Db94C5690747d18b8DA1#code', '_blank')}>
                 View Contract
               </PremiumButton>
             </motion.div>

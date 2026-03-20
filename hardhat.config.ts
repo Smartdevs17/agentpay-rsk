@@ -19,6 +19,21 @@ const config: HardhatUserConfig = {
       accounts: [PRIVATE_KEY],
     },
   },
+  etherscan: {
+    apiKey: {
+      rskTestnet: "no-api-key-needed",
+    },
+    customChains: [
+      {
+        network: "rskTestnet",
+        chainId: 31,
+        urls: {
+          apiURL: "https://rootstock-testnet.blockscout.com/api",
+          browserURL: "https://rootstock-testnet.blockscout.com",
+        },
+      },
+    ],
+  },
 };
 
 export default config;
