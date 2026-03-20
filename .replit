@@ -1,0 +1,13 @@
+run = "cd frontend && npm run dev"
+entrypoint = "CLAUDE.md"
+
+[nix]
+channel = "stable-23_11"
+
+[deployment]
+run = ["sh", "-c", "cd frontend && npm run build && npm start"]
+deploymentTarget = "cloudrun"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
