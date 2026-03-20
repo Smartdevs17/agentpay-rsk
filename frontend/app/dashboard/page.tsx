@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { Plus, DollarSign, Clock, CheckCircle2, AlertCircle, Bitcoin, Briefcase, ArrowDownLeft, MessageSquare, Scale, Lock } from "lucide-react";
+import { Plus, DollarSign, Clock, CheckCircle2, AlertCircle, Bitcoin, Briefcase, ArrowDownLeft, MessageSquare, Scale, Lock, Wallet } from "lucide-react";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { PremiumButton } from "../../components/ui/PremiumButton";
 import { useWallet } from "../../context/WalletContext";
@@ -230,82 +230,106 @@ export default function DashboardPage() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 gap-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-24 rounded-2xl bg-white/5 animate-pulse" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-48 rounded-2xl bg-white/5 animate-pulse" />
             ))}
           </div>
         ) : !isConnected ? (
-          <GlassCard className="text-center py-12" hover={false}>
-            <p className="text-white/40">Connect your wallet to view escrows.</p>
+          <GlassCard className="text-center py-20" hover={false}>
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                <Wallet className="h-8 w-8 text-white/20" />
+              </div>
+              <p className="text-white/40 max-w-xs mx-auto">Connect your wallet to view and manage your smart contract escrows on Rootstock.</p>
+            </div>
           </GlassCard>
         ) : activeList.length === 0 ? (
-          <GlassCard className="text-center py-12" hover={false}>
-            <p className="text-white/40">
-              {tab === "client"
-                ? "You haven't created any escrows yet."
-                : "No escrows assigned to you as freelancer."}
-            </p>
+          <GlassCard className="text-center py-20" hover={false}>
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                <Briefcase className="h-8 w-8 text-white/20" />
+              </div>
+              <p className="text-white/40">
+                {tab === "client"
+                  ? "You haven't created any escrows yet."
+                  : "No escrows assigned to you as freelancer."}
+              </p>
+            </div>
           </GlassCard>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {activeList.map((escrow: EscrowJob, i: number) => {
               const status = getStatusLabel(Number(escrow.status));
               const isFunded = Number(escrow.status) === 0;
               const isClient = tab === "client";
               return (
-                <GlassCard key={escrow.id.toString()} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
+                <GlassCard key={escrow.id.toString()} className="flex flex-col p-6 h-full border-white/5 hover:border-rsk-orange/30 transition-all duration-300">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shadow-inner">
                       <Bitcoin className="h-6 w-6 text-rsk-orange" />
                     </div>
-                    <div>
-                      <p className="font-bold">{parseFloat(formatEther(escrow.amount)).toFixed(6)} RBTC</p>
-                      <p className="text-xs text-white/40 font-mono">Escrow #{escrow.id.toString()}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:items-end">
-                    <p className="text-sm">
-                      {isClient ? "Freelancer" : "Client"}:{" "}
-                      <span className="font-mono text-xs text-white/60">
-                        {(isClient ? escrow.freelancer : escrow.client).slice(0, 6)}...
-                        {(isClient ? escrow.freelancer : escrow.client).slice(-4)}
-                      </span>
-                    </p>
-                    <div className={`mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider inline-block ${status.bg} ${status.color}`}>
+                    <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${status.bg} ${status.color} border border-current/10`}>
                       {status.label}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {isFunded && isClient && (
-                      <>
-                        <PremiumButton
-                          variant="primary"
-                          size="sm"
-                          onClick={() => handleRelease(escrow.id)}
-                          isLoading={actionLoading === `release-${escrow.id.toString()}`}
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-                          Release
-                        </PremiumButton>
-                        <PremiumButton
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRefund(escrow.id)}
-                          isLoading={actionLoading === `refund-${escrow.id.toString()}`}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Refund
-                        </PremiumButton>
-                      </>
-                    )}
-                    {isFunded && !isClient && (
-                      <span className="text-xs text-rsk-yellow/80 bg-rsk-yellow/10 px-3 py-1.5 rounded-lg">
-                        Awaiting client action
+                  <div className="space-y-1 mb-6">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold tracking-tight">
+                        {parseFloat(formatEther(escrow.amount)).toFixed(6)}
                       </span>
-                    )}
+                      <span className="text-xs font-bold text-white/30 uppercase tracking-widest">RBTC</span>
+                    </div>
+                    <p className="text-[10px] text-white/30 font-mono uppercase tracking-widest">Escrow ID: #{escrow.id.toString()}</p>
+                  </div>
+                  
+                  <div className="mt-auto space-y-4 pt-4 border-t border-white/5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">
+                        {isClient ? "Freelancer" : "Client"}
+                      </span>
+                      <span className="font-mono text-[10px] text-white/60 bg-white/5 px-2 py-1 rounded">
+                        {(isClient ? escrow.freelancer : escrow.client).slice(0, 8)}...
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {isFunded && isClient && (
+                        <>
+                          <PremiumButton
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handleRelease(escrow.id)}
+                            isLoading={actionLoading === `release-${escrow.id.toString()}`}
+                            className="flex-1 text-xs"
+                          >
+                            Release
+                          </PremiumButton>
+                          <PremiumButton
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRefund(escrow.id)}
+                            isLoading={actionLoading === `refund-${escrow.id.toString()}`}
+                            className="text-red-400 hover:text-red-300 px-3"
+                          >
+                            Refund
+                          </PremiumButton>
+                        </>
+                      )}
+                      {isFunded && !isClient && (
+                        <div className="w-full flex items-center justify-center gap-2 py-2 text-[10px] font-bold text-rsk-yellow/60 bg-rsk-yellow/5 rounded-lg border border-rsk-yellow/10">
+                          <Clock className="h-3 w-3" />
+                          AWAITING RELEASE
+                        </div>
+                      )}
+                      {!isFunded && (
+                        <div className="w-full flex items-center justify-center gap-2 py-2 text-[10px] font-bold text-white/20 bg-white/5 rounded-lg border border-white/5">
+                          <CheckCircle2 className="h-3 w-3" />
+                          SETTLED
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </GlassCard>
               );
