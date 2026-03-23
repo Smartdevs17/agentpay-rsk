@@ -42,7 +42,7 @@ export default function Home() {
               transition={{ delay: 0.1 }}
               className="text-lg sm:text-xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed"
             >
-              AgentPay RSK deploys decentralized escrow on Rootstock. 
+              AgentPay deploys decentralized escrow on Rootstock. 
               Funds are only released when milestones are met, secured by Bitcoin's security.
             </motion.p>
 
@@ -68,7 +68,7 @@ export default function Home() {
       <section id="features" className="py-24 px-4 relative z-20">
         <div className="container mx-auto max-w-7xl">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-5xl font-bold mb-4">Why AgentPay RSK?</h2>
+            <h2 className="text-3xl sm:text-5xl font-bold mb-4">Why AgentPay?</h2>
             <p className="text-white/50 text-lg">Built for the future of trustless freelance work</p>
           </div>
 
@@ -103,7 +103,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="py-12 border-t border-white/5 text-center text-white/40 text-sm">
-        <p>© 2026 AgentPay RSK. Built on Rootstock.</p>
+        <p>© 2026 AgentPay. Built on Rootstock.</p>
       </footer>
     </div>
   );

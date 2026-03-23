@@ -86,7 +86,7 @@ export default function SettingsPage() {
                 <h3 className="text-xl font-bold">Current Network</h3>
               </div>
               <span className="px-3 py-1 rounded-full bg-yellow-400/10 text-yellow-500 text-[10px] font-bold uppercase tracking-widest border border-yellow-400/20">
-                RSK Testnet
+                Rootstock Testnet
               </span>
             </div>
 
@@ -104,14 +104,14 @@ export default function SettingsPage() {
             <div className="mt-8 flex items-start gap-3 p-4 rounded-xl bg-rsk-orange/10 border border-rsk-orange/20">
               <Info className="h-5 w-5 text-rsk-orange shrink-0 mt-0.5" />
               <p className="text-xs text-white/60 leading-relaxed">
-                AgentPay RSK is currently optimized for the Rootstock Testnet. Switch to the network in your wallet to interact with the platform.
+                AgentPay is currently optimized for the Rootstock Testnet. Switch to the network in your wallet to interact with the platform.
               </p>
             </div>
           </GlassCard>
 
           {/* Footer Version Info */}
           <div className="text-center py-4">
-            <p className="text-[10px] text-white/20 uppercase tracking-[0.2em]">AgentPay RSK v1.0.4 - Secured by Bitcoin</p>
+            <p className="text-[10px] text-white/20 uppercase tracking-[0.2em]">AgentPay v1.0.4 - Secured by Bitcoin</p>
           </div>
         </div>
       </div>

@@ -71,7 +71,7 @@ export const Navbar = ({ address, onConnect, hideLogo }: NavbarProps) => {
                 Agent<span className="text-rsk-orange">Pay</span>
               </span>
               <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-medium">
-                Powered by RSK
+                Powered by Rootstock
               </span>
             </div>
           </Link>

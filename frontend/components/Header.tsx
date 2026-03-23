@@ -14,7 +14,7 @@ export default function Header({ address, onConnect }: HeaderProps) {
           <circle cx="16" cy="16" r="16" fill="#FF6B00" />
           <text x="16" y="21" textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold" fontFamily="Sora, sans-serif">R</text>
         </svg>
-        <span className="text-lg font-semibold tracking-tight">AgentPay RSK</span>
+        <span className="text-lg font-semibold tracking-tight">AgentPay Rootstock</span>
       </div>
       <button
         onClick={onConnect}

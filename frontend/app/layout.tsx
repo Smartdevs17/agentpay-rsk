@@ -7,7 +7,7 @@ import "./globals.css";
 const sora = Sora({ subsets: ["latin"], variable: "--font-sora" });
 
 export const metadata: Metadata = {
-  title: "AgentPay RSK — Freelance Escrow",
+  title: "AgentPay — Freelance Escrow on Rootstock",
   description: "Trustless RBTC escrow for freelancers on Rootstock",
 };
 
