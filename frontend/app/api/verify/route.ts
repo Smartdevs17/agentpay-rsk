@@ -61,26 +61,8 @@ export async function POST(req: NextRequest) {
       ? diffContent.slice(0, maxDiffLength) + "\n\n... [diff truncated]"
       : diffContent;
 
-    // Call Claude API for verification
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "AI verification not configured. Set ANTHROPIC_API_KEY." }, { status: 500 });
-    }
-
-    const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 1024,
-        messages: [
-          {
-            role: "user",
-            content: `You are a code review AI agent for AgentPay, a freelance escrow platform on Rootstock. Your job is to verify whether delivered work matches the agreed scope.
+    // Build the verification prompt
+    const verifyPrompt = `You are a code review AI agent for AgentPay, a freelance escrow platform on Rootstock. Your job is to verify whether delivered work matches the agreed scope.
 
 ## Agreed Work Scope
 ${scope}
@@ -105,20 +87,78 @@ Respond in this exact JSON format:
   "missing_items": ["list of scope items that appear missing or incomplete"]
 }
 
-Respond with ONLY the JSON, no markdown formatting.`,
-          },
-        ],
-      }),
-    });
+Respond with ONLY the JSON, no markdown formatting.`;
 
-    if (!claudeRes.ok) {
-      const errText = await claudeRes.text();
-      console.error("Claude API error:", errText);
-      return NextResponse.json({ error: "AI verification failed. Try again later." }, { status: 500 });
+    // Try OpenAI first, then Mistral as fallback
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const mistralKey = process.env.MISTRAL_API_KEY;
+
+    if (!openaiKey && !mistralKey) {
+      return NextResponse.json({ error: "AI verification not configured. Set OPENAI_API_KEY or MISTRAL_API_KEY." }, { status: 500 });
     }
 
-    const claudeData = await claudeRes.json();
-    const rawText = claudeData.content?.[0]?.text || "";
+    let rawText = "";
+
+    if (openaiKey) {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openaiKey}`,
+      };
+      if (process.env.OPENAI_ORG_ID) {
+        headers["OpenAI-Organization"] = process.env.OPENAI_ORG_ID;
+      }
+
+      const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          max_tokens: 1024,
+          messages: [{ role: "user", content: verifyPrompt }],
+        }),
+      });
+
+      if (!aiRes.ok) {
+        const errText = await aiRes.text();
+        console.error("OpenAI API error:", errText);
+        // Fall through to Mistral if available
+        if (!mistralKey) {
+          return NextResponse.json({ error: "AI verification failed. Try again later." }, { status: 500 });
+        }
+      } else {
+        const aiData = await aiRes.json();
+        rawText = aiData.choices?.[0]?.message?.content || "";
+      }
+    }
+
+    // Fallback to Mistral if OpenAI failed or wasn't configured
+    if (!rawText && mistralKey) {
+      const aiRes = await fetch("https://api.mistral.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${mistralKey}`,
+        },
+        body: JSON.stringify({
+          model: "mistral-small-latest",
+          max_tokens: 1024,
+          messages: [{ role: "user", content: verifyPrompt }],
+        }),
+      });
+
+      if (!aiRes.ok) {
+        const errText = await aiRes.text();
+        console.error("Mistral API error:", errText);
+        return NextResponse.json({ error: "AI verification failed. Try again later." }, { status: 500 });
+      }
+
+      const aiData = await aiRes.json();
+      rawText = aiData.choices?.[0]?.message?.content || "";
+    }
+
+    if (!rawText) {
+      return NextResponse.json({ error: "No response from AI provider." }, { status: 500 });
+    }
 
     try {
       const result = JSON.parse(rawText);
