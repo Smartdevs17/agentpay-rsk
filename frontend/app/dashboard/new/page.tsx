@@ -11,52 +11,63 @@ import { saveScope } from "../../../lib/scopeStore";
 
 export default function NewEscrowPage() {
   const router = useRouter();
-  const { createEscrow, loading, address, fetchEscrows, escrows } = useWallet();
+  const { createEscrow, address, fetchEscrows } = useWallet();
   const { toast } = useToast();
   const [freelancer, setFreelancer] = useState("");
   const [amount, setAmount] = useState("");
   const [scope, setScope] = useState("");
   const [githubUrl, setGithubUrl] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!freelancer || !amount) return;
+    if (!freelancer || !amount || submitting) return;
 
+    setSubmitting(true);
     const lockedAmount = amount;
+    const savedScope = scope;
+    const savedGithub = githubUrl;
+
     const result = await createEscrow(freelancer, lockedAmount);
     if (result.submitted) {
-      // Clear form
-      const savedScope = scope;
-      const savedGithub = githubUrl;
+      // Clear form immediately
       setFreelancer("");
       setAmount("");
       setScope("");
       setGithubUrl("");
+
+      // Toast first, then navigate
+      toast(`Transaction submitted! Locking ${lockedAmount} RBTC...`, "info");
       router.push("/dashboard");
 
-      setTimeout(() => {
-        toast(`Transaction submitted! Locking ${lockedAmount} RBTC...`, "info");
-      }, 100);
-
-      // Wait for mining, then save scope metadata keyed by the new escrow ID
-      result.wait().then((confirmed) => {
+      // Wait for mining in background
+      result.wait().then(async (confirmed) => {
         if (confirmed) {
           toast(`Escrow confirmed on-chain! ${lockedAmount} RBTC locked.`);
           if (address) {
-            fetchEscrows(address).then(() => {
-              // The newest escrow has the highest ID — save scope for it
-              // We need to get the escrow count to determine the ID
-              const nextId = (escrows?.length ?? 0).toString();
+            // Read escrowCount from contract to get the correct ID
+            try {
+              const { ethers } = await import("ethers");
+              const { ESCROW_ABI, ESCROW_CONTRACT_ADDRESS } = await import("../../../lib/contract");
+              const provider = new ethers.BrowserProvider(window.ethereum!);
+              const contract = new ethers.Contract(ESCROW_CONTRACT_ADDRESS, ESCROW_ABI, provider);
+              const count = await contract.escrowCount();
+              // The new escrow ID is count - 1 (since count was incremented)
+              const newId = (Number(count) - 1).toString();
               if (savedScope || savedGithub) {
-                saveScope(nextId, savedScope, savedGithub);
+                saveScope(newId, savedScope, savedGithub);
               }
-            });
+            } catch {
+              // Scope save failed silently — not critical
+            }
+            fetchEscrows(address);
           }
         }
       });
     } else {
       toast("Failed to submit transaction.", "error");
     }
+    setSubmitting(false);
   };
 
   return (
@@ -160,8 +171,8 @@ export default function NewEscrowPage() {
                   type="submit"
                   variant="premium"
                   className="w-full h-14 text-lg"
-                  isLoading={loading}
-                  disabled={!address}
+                  isLoading={submitting}
+                  disabled={!address || submitting}
                 >
                   <Send className="mr-2 h-5 w-5" />
                   Fund & Create Escrow
