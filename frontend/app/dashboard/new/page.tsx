@@ -2,53 +2,77 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, ShieldCheck, Zap, Info, WalletIcon, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Send, ShieldCheck, Zap, Info, WalletIcon, CheckCircle2, FileText, Github, Bot } from "lucide-react";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { PremiumButton } from "../../../components/ui/PremiumButton";
 import { useWallet } from "../../../context/WalletContext";
 import { useToast } from "../../../context/ToastContext";
+import { saveScope } from "../../../lib/scopeStore";
+import { ethers } from "ethers";
+import { ESCROW_ABI, ESCROW_CONTRACT_ADDRESS } from "../../../lib/contract";
 
 export default function NewEscrowPage() {
   const router = useRouter();
-  const { createEscrow, loading, address, fetchEscrows } = useWallet();
+  const { createEscrow, address, fetchEscrows } = useWallet();
   const { toast } = useToast();
   const [freelancer, setFreelancer] = useState("");
   const [amount, setAmount] = useState("");
+  const [scope, setScope] = useState("");
+  const [githubUrl, setGithubUrl] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!freelancer || !amount) return;
+    if (!freelancer || !amount || submitting) return;
 
-    const lockedAmount = amount;
-    const result = await createEscrow(freelancer, lockedAmount);
-    if (result.submitted) {
-      // Tx signed — clear form and navigate
-      setFreelancer("");
-      setAmount("");
-      router.push("/dashboard");
+    setSubmitting(true);
 
-      // Toast after navigation settles
-      setTimeout(() => {
+    try {
+      // 1. Read escrowCount BEFORE tx — this will be the new escrow's ID
+      const provider = new ethers.BrowserProvider(window.ethereum!);
+      const contract = new ethers.Contract(ESCROW_CONTRACT_ADDRESS, ESCROW_ABI, provider);
+      const nextId = Number(await contract.escrowCount()).toString();
+
+      // 2. Save scope immediately with the known next ID
+      if (scope || githubUrl) {
+        saveScope(nextId, scope, githubUrl);
+      }
+
+      // 3. Submit the transaction
+      const lockedAmount = amount;
+      const result = await createEscrow(freelancer, lockedAmount);
+
+      if (result.submitted) {
+        setFreelancer("");
+        setAmount("");
+        setScope("");
+        setGithubUrl("");
+
         toast(`Transaction submitted! Locking ${lockedAmount} RBTC...`, "info");
-      }, 100);
+        router.push("/dashboard");
 
-      // Wait for mining in background, then confirm
-      result.wait().then((confirmed) => {
-        if (confirmed) {
-          toast(`Escrow confirmed on-chain! ${lockedAmount} RBTC locked.`);
-          if (address) fetchEscrows(address);
-        }
-      });
-    } else {
-      toast("Failed to submit transaction.", "error");
+        // 4. Wait for mining, then refresh data
+        result.wait().then((confirmed) => {
+          if (confirmed) {
+            toast(`Escrow confirmed on-chain! ${lockedAmount} RBTC locked.`);
+            if (address) fetchEscrows(address);
+          }
+        });
+      } else {
+        toast("Failed to submit transaction.", "error");
+      }
+    } catch (err: any) {
+      toast("Failed to create escrow.", "error");
     }
+
+    setSubmitting(false);
   };
 
   return (
     <div className="py-8">
-      <PremiumButton 
-        variant="ghost" 
-        size="sm" 
+      <PremiumButton
+        variant="ghost"
+        size="sm"
         onClick={() => router.back()}
         className="mb-8"
       >
@@ -76,7 +100,7 @@ export default function NewEscrowPage() {
                   <WalletIcon className="h-4 w-4" />
                   Freelancer Wallet Address
                 </label>
-                <input 
+                <input
                   type="text"
                   placeholder="0x..."
                   value={freelancer}
@@ -93,7 +117,7 @@ export default function NewEscrowPage() {
                   Deposit Amount
                 </label>
                 <div className="relative">
-                  <input 
+                  <input
                     type="number"
                     step="0.0001"
                     placeholder="0.05"
@@ -106,13 +130,53 @@ export default function NewEscrowPage() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-white/5">
-                <PremiumButton 
-                  type="submit" 
-                  variant="premium" 
+              {/* Work Scope */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-purple-400" />
+                  Work Scope
+                  <span className="text-[10px] text-white/30 ml-1">(optional)</span>
+                </label>
+                <textarea
+                  placeholder="Describe the deliverables — e.g. 'Build a REST API with auth endpoints, deploy to staging, write unit tests for all routes.'"
+                  value={scope}
+                  onChange={(e) => setScope(e.target.value)}
+                  rows={3}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500/50 transition-colors text-sm resize-none"
+                />
+                <p className="text-[10px] text-white/30">The AI agent will verify GitHub commits against this scope before you release funds.</p>
+              </div>
+
+              {/* GitHub URL */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70 flex items-center gap-2">
+                  <Github className="h-4 w-4" />
+                  GitHub Repository / PR Link
+                  <span className="text-[10px] text-white/30 ml-1">(optional)</span>
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://github.com/user/repo or .../pull/1"
+                  value={githubUrl}
+                  onChange={(e) => setGithubUrl(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 focus:outline-none focus:border-white/30 transition-colors text-sm font-mono"
+                />
+                <p className="text-[10px] text-white/30">Link a public repo, PR, or commit for AI-powered work verification.</p>
+              </div>
+
+              <div className="pt-6 border-t border-white/5 space-y-4">
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-rsk-orange/5 border border-rsk-orange/10">
+                  <Info className="h-4 w-4 text-rsk-orange shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-white/50 leading-relaxed">
+                    Your escrow will appear on the dashboard after the transaction is confirmed on the Rootstock network. This usually takes 30-60 seconds. You'll receive a toast notification once it's confirmed.
+                  </p>
+                </div>
+                <PremiumButton
+                  type="submit"
+                  variant="premium"
                   className="w-full h-14 text-lg"
-                  isLoading={loading}
-                  disabled={!address}
+                  isLoading={submitting}
+                  disabled={!address || submitting}
                 >
                   <Send className="mr-2 h-5 w-5" />
                   Fund & Create Escrow
@@ -127,8 +191,33 @@ export default function NewEscrowPage() {
           </GlassCard>
         </div>
 
-        {/* Right Column: Info/Summary */}
+        {/* Right Column: Info */}
         <div className="space-y-6">
+          {/* AI Verification Info */}
+          <GlassCard className="p-6 bg-purple-500/5 border-purple-500/10" hover={false}>
+            <div className="flex items-center gap-3 mb-4">
+              <Bot className="h-6 w-6 text-purple-400" />
+              <h3 className="font-bold">AI Work Verification</h3>
+            </div>
+            <p className="text-sm text-white/50 mb-4">
+              Define a scope and link a GitHub PR — our AI agent will analyze the code changes to verify if the freelancer's work matches what was agreed upon.
+            </p>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start text-xs text-white/40">
+                <CheckCircle2 className="h-3.5 w-3.5 text-purple-400 shrink-0 mt-0.5" />
+                <span>Analyzes PR diffs and commit history</span>
+              </div>
+              <div className="flex gap-2 items-start text-xs text-white/40">
+                <CheckCircle2 className="h-3.5 w-3.5 text-purple-400 shrink-0 mt-0.5" />
+                <span>Checks scope items against code changes</span>
+              </div>
+              <div className="flex gap-2 items-start text-xs text-white/40">
+                <CheckCircle2 className="h-3.5 w-3.5 text-purple-400 shrink-0 mt-0.5" />
+                <span>Provides confidence score and breakdown</span>
+              </div>
+            </div>
+          </GlassCard>
+
           <GlassCard className="p-6 bg-rsk-orange/5 border-rsk-orange/10" hover={false}>
             <div className="flex items-center gap-3 mb-4">
               <ShieldCheck className="h-6 w-6 text-rsk-orange" />
@@ -158,15 +247,15 @@ export default function NewEscrowPage() {
             <div className="space-y-4">
               <div className="flex gap-4">
                 <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold shrink-0">1</div>
-                <p className="text-xs text-white/40">Enter the freelancer's wallet address and deposit the agreed amount in RBTC.</p>
+                <p className="text-xs text-white/40">Define the work scope and link a GitHub repo or PR.</p>
               </div>
               <div className="flex gap-4">
                 <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold shrink-0">2</div>
-                <p className="text-xs text-white/40">The smart contract locks the funds, creating a trustless bond.</p>
+                <p className="text-xs text-white/40">Lock RBTC — the smart contract holds funds trustlessly.</p>
               </div>
               <div className="flex gap-4">
                 <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold shrink-0">3</div>
-                <p className="text-xs text-white/40">Once work is received, go to your dashboard and click "Release".</p>
+                <p className="text-xs text-white/40">Run AI verification on the PR, then release with confidence.</p>
               </div>
             </div>
           </GlassCard>

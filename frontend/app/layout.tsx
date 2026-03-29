@@ -22,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="relative z-10">{children}</div>
           </ToastProvider>
         </WalletProvider>
+        <div id="toast-portal" />
       </body>
     </html>
   );

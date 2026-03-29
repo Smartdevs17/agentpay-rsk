@@ -125,6 +125,7 @@ export function useEscrow() {
       // Fetch escrows where user is the client
       const clientResult = await contract.getEscrowsByClient(userAddress);
       const clientEscrows = Array.from(clientResult).map(normalizeEscrow);
+
       setEscrows(clientEscrows);
 
       // Fetch all escrows and filter for freelancer role
@@ -216,6 +217,7 @@ export function useEscrow() {
     setFreelancerEscrows([]);
     setError(null);
   }, []);
+
 
   // Auto-reconnect if wallet was previously approved (no popup)
   useEffect(() => {
