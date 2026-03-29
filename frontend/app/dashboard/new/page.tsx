@@ -164,7 +164,13 @@ export default function NewEscrowPage() {
                 <p className="text-[10px] text-white/30">Link a public repo, PR, or commit for AI-powered work verification.</p>
               </div>
 
-              <div className="pt-6 border-t border-white/5">
+              <div className="pt-6 border-t border-white/5 space-y-4">
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-rsk-orange/5 border border-rsk-orange/10">
+                  <Info className="h-4 w-4 text-rsk-orange shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-white/50 leading-relaxed">
+                    Your escrow will appear on the dashboard after the transaction is confirmed on the Rootstock network. This usually takes 30-60 seconds. You'll receive a toast notification once it's confirmed.
+                  </p>
+                </div>
                 <PremiumButton
                   type="submit"
                   variant="premium"
