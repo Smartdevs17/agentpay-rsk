@@ -40,6 +40,7 @@ export function useEscrow() {
   const [escrows, setEscrows] = useState<EscrowJob[]>([]);
   const [freelancerEscrows, setFreelancerEscrows] = useState<EscrowJob[]>([]);
   const [pendingEscrows, setPendingEscrows] = useState<EscrowJob[]>([]);
+  const [justConfirmedIds, setJustConfirmedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,8 +127,21 @@ export function useEscrow() {
       // Fetch escrows where user is the client
       const clientResult = await contract.getEscrowsByClient(userAddress);
       const clientEscrows = Array.from(clientResult).map(normalizeEscrow);
+
+      // If we had pending escrows, mark new ones as "just confirmed"
+      if (pendingEscrows.length > 0) {
+        const oldIds = new Set(escrows.map(e => e.id.toString()));
+        const newIds = clientEscrows
+          .filter(e => !oldIds.has(e.id.toString()))
+          .map(e => e.id.toString());
+        if (newIds.length > 0) {
+          setJustConfirmedIds(new Set(newIds));
+          setTimeout(() => setJustConfirmedIds(new Set()), 3000);
+        }
+      }
+
       setEscrows(clientEscrows);
-      setPendingEscrows([]); // Clear pending once real data loads
+      setPendingEscrows([]);
 
       // Fetch all escrows and filter for freelancer role
       const count = await contract.escrowCount();
@@ -260,5 +274,5 @@ export function useEscrow() {
     };
   }, [disconnect]);
 
-  return { address, escrows, freelancerEscrows, pendingEscrows, loading, error, connect, disconnect, fetchEscrows, createEscrow, addPendingEscrow, release, refund };
+  return { address, escrows, freelancerEscrows, pendingEscrows, justConfirmedIds, loading, error, connect, disconnect, fetchEscrows, createEscrow, addPendingEscrow, release, refund };
 }

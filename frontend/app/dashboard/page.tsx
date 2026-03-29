@@ -22,7 +22,7 @@ type VerifyResult = {
 };
 
 export default function DashboardPage() {
-  const { address, escrows, freelancerEscrows, pendingEscrows, loading, error, fetchEscrows, release, refund } = useWallet();
+  const { address, escrows, freelancerEscrows, pendingEscrows, justConfirmedIds, loading, error, fetchEscrows, release, refund } = useWallet();
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("client");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -284,15 +284,16 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {activeList.map((escrow: EscrowJob) => {
               const status = getStatusLabel(Number(escrow.status));
+              const id = escrow.id.toString();
               const isPending = Number(escrow.status) === -1;
               const isFunded = Number(escrow.status) === 0;
+              const justConfirmed = justConfirmedIds?.has(id) ?? false;
               const isClient = tab === "client";
-              const id = escrow.id.toString();
               const scope = scopeData[id];
               const isEditing = editingScopeId === id;
 
               return (
-                <GlassCard key={id} className="flex flex-col p-6 h-full border-white/5 hover:border-rsk-orange/30 transition-all duration-300">
+                <GlassCard key={id} className={`flex flex-col p-6 h-full transition-all duration-300 ${justConfirmed ? "border-rsk-green/50 shadow-lg shadow-rsk-green/10 animate-confirm-flash" : isPending ? "border-rsk-orange/30 animate-pulse" : "border-white/5 hover:border-rsk-orange/30"}`}>
                   {/* Header row */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shadow-inner">
