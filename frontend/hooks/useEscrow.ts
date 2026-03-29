@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { ethers } from "ethers";
 import { ESCROW_ABI, ESCROW_CONTRACT_ADDRESS, RSK_TESTNET } from "../lib/contract";
 
@@ -43,6 +43,12 @@ export function useEscrow() {
   const [justConfirmedIds, setJustConfirmedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Refs so fetchEscrows always reads current values without stale closures
+  const escrowsRef = useRef(escrows);
+  escrowsRef.current = escrows;
+  const pendingRef = useRef(pendingEscrows);
+  pendingRef.current = pendingEscrows;
 
   const getContract = async (withSigner = false) => {
     if (!window.ethereum) throw new Error("Wallet not found. Please install Rabby or MetaMask.");
@@ -129,8 +135,8 @@ export function useEscrow() {
       const clientEscrows = Array.from(clientResult).map(normalizeEscrow);
 
       // If we had pending escrows, mark new ones as "just confirmed"
-      if (pendingEscrows.length > 0) {
-        const oldIds = new Set(escrows.map(e => e.id.toString()));
+      if (pendingRef.current.length > 0) {
+        const oldIds = new Set(escrowsRef.current.map(e => e.id.toString()));
         const newIds = clientEscrows
           .filter(e => !oldIds.has(e.id.toString()))
           .map(e => e.id.toString());

@@ -40,10 +40,13 @@ export default function DashboardPage() {
     if (address) fetchEscrows(address);
   }, [address, fetchEscrows]);
 
-  // Load scope data from localStorage
+  // Load scope data from localStorage whenever escrows change
   useEffect(() => {
     setScopeData(getAllScopes());
-  }, [escrows]);
+    // Also check again after a short delay in case scope was saved right before fetch
+    const t = setTimeout(() => setScopeData(getAllScopes()), 500);
+    return () => clearTimeout(t);
+  }, [escrows, justConfirmedIds]);
 
   const applyOptimistic = useCallback((list: EscrowJob[]) =>
     list.map((e) => {

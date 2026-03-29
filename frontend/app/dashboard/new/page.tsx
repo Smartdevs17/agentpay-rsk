@@ -47,25 +47,22 @@ export default function NewEscrowPage() {
       // Wait for mining in background
       result.wait().then(async (confirmed) => {
         if (confirmed) {
-          toast(`Escrow confirmed on-chain! ${lockedAmount} RBTC locked.`);
-          if (address) {
-            // Read escrowCount from contract to get the correct ID
+          // Save scope FIRST so it's available when dashboard re-renders
+          if (savedScope || savedGithub) {
             try {
               const { ethers } = await import("ethers");
               const { ESCROW_ABI, ESCROW_CONTRACT_ADDRESS } = await import("../../../lib/contract");
               const provider = new ethers.BrowserProvider(window.ethereum!);
               const contract = new ethers.Contract(ESCROW_CONTRACT_ADDRESS, ESCROW_ABI, provider);
               const count = await contract.escrowCount();
-              // The new escrow ID is count - 1 (since count was incremented)
               const newId = (Number(count) - 1).toString();
-              if (savedScope || savedGithub) {
-                saveScope(newId, savedScope, savedGithub);
-              }
+              saveScope(newId, savedScope, savedGithub);
             } catch {
-              // Scope save failed silently — not critical
+              // Scope save failed — not critical
             }
-            fetchEscrows(address);
           }
+          toast(`Escrow confirmed on-chain! ${lockedAmount} RBTC locked.`);
+          if (address) fetchEscrows(address);
         }
       });
     } else {
