@@ -11,7 +11,7 @@ import { saveScope } from "../../../lib/scopeStore";
 
 export default function NewEscrowPage() {
   const router = useRouter();
-  const { createEscrow, address, fetchEscrows } = useWallet();
+  const { createEscrow, address, fetchEscrows, addPendingEscrow } = useWallet();
   const { toast } = useToast();
   const [freelancer, setFreelancer] = useState("");
   const [amount, setAmount] = useState("");
@@ -28,13 +28,17 @@ export default function NewEscrowPage() {
     const savedScope = scope;
     const savedGithub = githubUrl;
 
-    const result = await createEscrow(freelancer, lockedAmount);
+    const savedFreelancer = freelancer;
+    const result = await createEscrow(savedFreelancer, lockedAmount);
     if (result.submitted) {
       // Clear form immediately
       setFreelancer("");
       setAmount("");
       setScope("");
       setGithubUrl("");
+
+      // Add pending card to dashboard immediately
+      if (address) addPendingEscrow(savedFreelancer, lockedAmount, address);
 
       // Toast first, then navigate
       toast(`Transaction submitted! Locking ${lockedAmount} RBTC...`, "info");

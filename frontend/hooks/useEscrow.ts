@@ -39,6 +39,7 @@ export function useEscrow() {
   const [address, setAddress] = useState<string | null>(null);
   const [escrows, setEscrows] = useState<EscrowJob[]>([]);
   const [freelancerEscrows, setFreelancerEscrows] = useState<EscrowJob[]>([]);
+  const [pendingEscrows, setPendingEscrows] = useState<EscrowJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,6 +127,7 @@ export function useEscrow() {
       const clientResult = await contract.getEscrowsByClient(userAddress);
       const clientEscrows = Array.from(clientResult).map(normalizeEscrow);
       setEscrows(clientEscrows);
+      setPendingEscrows([]); // Clear pending once real data loads
 
       // Fetch all escrows and filter for freelancer role
       const count = await contract.escrowCount();
@@ -154,6 +156,18 @@ export function useEscrow() {
 
   // Returns { submitted, wait } — submitted resolves once wallet signs (fast),
   // wait() returns a promise that resolves when the tx is mined (slow).
+  const addPendingEscrow = useCallback((freelancer: string, amount: string, client: string) => {
+    const pending: EscrowJob = {
+      id: BigInt(Date.now()), // temp ID
+      client,
+      freelancer,
+      amount: ethers.parseEther(amount),
+      status: -1, // special "pending" status
+      createdAt: BigInt(Math.floor(Date.now() / 1000)),
+    };
+    setPendingEscrows((prev) => [...prev, pending]);
+  }, []);
+
   const createEscrow = useCallback(async (freelancer: string, amountRBTC: string): Promise<{ submitted: boolean; wait: () => Promise<boolean> }> => {
     try {
       setLoading(true);
@@ -246,5 +260,5 @@ export function useEscrow() {
     };
   }, [disconnect]);
 
-  return { address, escrows, freelancerEscrows, loading, error, connect, disconnect, fetchEscrows, createEscrow, release, refund };
+  return { address, escrows, freelancerEscrows, pendingEscrows, loading, error, connect, disconnect, fetchEscrows, createEscrow, addPendingEscrow, release, refund };
 }

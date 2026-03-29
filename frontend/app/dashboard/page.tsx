@@ -22,7 +22,7 @@ type VerifyResult = {
 };
 
 export default function DashboardPage() {
-  const { address, escrows, freelancerEscrows, loading, error, fetchEscrows, release, refund } = useWallet();
+  const { address, escrows, freelancerEscrows, pendingEscrows, loading, error, fetchEscrows, release, refund } = useWallet();
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("client");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -157,6 +157,7 @@ export default function DashboardPage() {
 
   const getStatusLabel = (status: number) => {
     switch (status) {
+      case -1: return { label: "Confirming...", color: "text-rsk-orange", bg: "bg-rsk-orange/10" };
       case 0: return { label: "Funded", color: "text-rsk-yellow", bg: "bg-rsk-yellow/10" };
       case 1: return { label: "Released", color: "text-rsk-green", bg: "bg-rsk-green/10" };
       case 2: return { label: "Refunded", color: "text-red-400", bg: "bg-red-400/10" };
@@ -164,7 +165,7 @@ export default function DashboardPage() {
     }
   };
 
-  const clientList = applyOptimistic(escrows ?? []);
+  const clientList = [...(pendingEscrows ?? []), ...applyOptimistic(escrows ?? [])];
   const freelancerList = applyOptimistic(freelancerEscrows ?? []);
   const activeList = tab === "client" ? clientList : freelancerList;
   const isConnected = !!address;
@@ -283,6 +284,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {activeList.map((escrow: EscrowJob) => {
               const status = getStatusLabel(Number(escrow.status));
+              const isPending = Number(escrow.status) === -1;
               const isFunded = Number(escrow.status) === 0;
               const isClient = tab === "client";
               const id = escrow.id.toString();
@@ -415,7 +417,13 @@ export default function DashboardPage() {
                           <Clock className="h-3 w-3" />AWAITING RELEASE
                         </div>
                       )}
-                      {!isFunded && (
+                      {isPending && (
+                        <div className="w-full flex items-center justify-center gap-2 py-2 text-[10px] font-bold text-rsk-orange/60 bg-rsk-orange/5 rounded-lg border border-rsk-orange/10">
+                          <div className="w-3 h-3 border-2 border-rsk-orange/60 border-t-transparent rounded-full animate-spin" />
+                          CONFIRMING ON-CHAIN...
+                        </div>
+                      )}
+                      {!isFunded && !isPending && (
                         <div className="w-full flex items-center justify-center gap-2 py-2 text-[10px] font-bold text-white/20 bg-white/5 rounded-lg border border-white/5">
                           <CheckCircle2 className="h-3 w-3" />SETTLED
                         </div>
