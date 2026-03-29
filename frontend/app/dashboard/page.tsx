@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("client");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [optimisticUpdates, setOptimisticUpdates] = useState<Record<string, number>>({});
-  const [scopeData, setScopeData] = useState<Record<string, ScopeData>>({});
+  const [scopeData, setScopeData] = useState<Record<string, ScopeData>>(getAllScopes);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
@@ -40,10 +40,17 @@ export default function DashboardPage() {
     if (address) fetchEscrows(address);
   }, [address, fetchEscrows]);
 
-  // Load scope data from localStorage whenever escrows change
+  const reloadScopes = useCallback(() => setScopeData(getAllScopes()), []);
+
+  // Reload scope data from localStorage whenever escrows change
+  useEffect(() => { reloadScopes(); }, [escrows, reloadScopes]);
+
+  // Also poll briefly after mount to catch scopes saved during navigation
   useEffect(() => {
-    setScopeData(getAllScopes());
-  }, [escrows]);
+    const t1 = setTimeout(reloadScopes, 300);
+    const t2 = setTimeout(reloadScopes, 1000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [reloadScopes]);
 
   const applyOptimistic = useCallback((list: EscrowJob[]) =>
     list.map((e) => {
