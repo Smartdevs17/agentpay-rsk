@@ -8,10 +8,12 @@ import { PremiumButton } from "../../../components/ui/PremiumButton";
 import { useWallet } from "../../../context/WalletContext";
 import { useToast } from "../../../context/ToastContext";
 import { saveScope } from "../../../lib/scopeStore";
+import { ethers } from "ethers";
+import { ESCROW_ABI, ESCROW_CONTRACT_ADDRESS } from "../../../lib/contract";
 
 export default function NewEscrowPage() {
   const router = useRouter();
-  const { createEscrow, address, fetchEscrows, addPendingEscrow } = useWallet();
+  const { createEscrow, address, fetchEscrows } = useWallet();
   const { toast } = useToast();
   const [freelancer, setFreelancer] = useState("");
   const [amount, setAmount] = useState("");
@@ -24,50 +26,45 @@ export default function NewEscrowPage() {
     if (!freelancer || !amount || submitting) return;
 
     setSubmitting(true);
-    const lockedAmount = amount;
-    const savedScope = scope;
-    const savedGithub = githubUrl;
 
-    const savedFreelancer = freelancer;
-    const result = await createEscrow(savedFreelancer, lockedAmount);
-    if (result.submitted) {
-      // Clear form immediately
-      setFreelancer("");
-      setAmount("");
-      setScope("");
-      setGithubUrl("");
+    try {
+      // 1. Read escrowCount BEFORE tx — this will be the new escrow's ID
+      const provider = new ethers.BrowserProvider(window.ethereum!);
+      const contract = new ethers.Contract(ESCROW_CONTRACT_ADDRESS, ESCROW_ABI, provider);
+      const nextId = Number(await contract.escrowCount()).toString();
 
-      // Add pending card to dashboard immediately
-      if (address) addPendingEscrow(savedFreelancer, lockedAmount, address);
+      // 2. Save scope immediately with the known next ID
+      if (scope || githubUrl) {
+        saveScope(nextId, scope, githubUrl);
+      }
 
-      // Toast first, then navigate
-      toast(`Transaction submitted! Locking ${lockedAmount} RBTC...`, "info");
-      router.push("/dashboard");
+      // 3. Submit the transaction
+      const lockedAmount = amount;
+      const result = await createEscrow(freelancer, lockedAmount);
 
-      // Wait for mining in background
-      result.wait().then(async (confirmed) => {
-        if (confirmed) {
-          // Save scope FIRST so it's available when dashboard re-renders
-          if (savedScope || savedGithub) {
-            try {
-              const { ethers } = await import("ethers");
-              const { ESCROW_ABI, ESCROW_CONTRACT_ADDRESS } = await import("../../../lib/contract");
-              const provider = new ethers.BrowserProvider(window.ethereum!);
-              const contract = new ethers.Contract(ESCROW_CONTRACT_ADDRESS, ESCROW_ABI, provider);
-              const count = await contract.escrowCount();
-              const newId = (Number(count) - 1).toString();
-              saveScope(newId, savedScope, savedGithub);
-            } catch {
-              // Scope save failed — not critical
-            }
+      if (result.submitted) {
+        setFreelancer("");
+        setAmount("");
+        setScope("");
+        setGithubUrl("");
+
+        toast(`Transaction submitted! Locking ${lockedAmount} RBTC...`, "info");
+        router.push("/dashboard");
+
+        // 4. Wait for mining, then refresh data
+        result.wait().then((confirmed) => {
+          if (confirmed) {
+            toast(`Escrow confirmed on-chain! ${lockedAmount} RBTC locked.`);
+            if (address) fetchEscrows(address);
           }
-          toast(`Escrow confirmed on-chain! ${lockedAmount} RBTC locked.`);
-          if (address) fetchEscrows(address);
-        }
-      });
-    } else {
-      toast("Failed to submit transaction.", "error");
+        });
+      } else {
+        toast("Failed to submit transaction.", "error");
+      }
+    } catch (err: any) {
+      toast("Failed to create escrow.", "error");
     }
+
     setSubmitting(false);
   };
 

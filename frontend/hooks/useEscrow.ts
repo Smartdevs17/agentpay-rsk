@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ethers } from "ethers";
 import { ESCROW_ABI, ESCROW_CONTRACT_ADDRESS, RSK_TESTNET } from "../lib/contract";
 
@@ -39,16 +39,8 @@ export function useEscrow() {
   const [address, setAddress] = useState<string | null>(null);
   const [escrows, setEscrows] = useState<EscrowJob[]>([]);
   const [freelancerEscrows, setFreelancerEscrows] = useState<EscrowJob[]>([]);
-  const [pendingEscrows, setPendingEscrows] = useState<EscrowJob[]>([]);
-  const [justConfirmedIds, setJustConfirmedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Refs so fetchEscrows always reads current values without stale closures
-  const escrowsRef = useRef(escrows);
-  escrowsRef.current = escrows;
-  const pendingRef = useRef(pendingEscrows);
-  pendingRef.current = pendingEscrows;
 
   const getContract = async (withSigner = false) => {
     if (!window.ethereum) throw new Error("Wallet not found. Please install Rabby or MetaMask.");
@@ -134,20 +126,7 @@ export function useEscrow() {
       const clientResult = await contract.getEscrowsByClient(userAddress);
       const clientEscrows = Array.from(clientResult).map(normalizeEscrow);
 
-      // If we had pending escrows, mark new ones as "just confirmed"
-      if (pendingRef.current.length > 0) {
-        const oldIds = new Set(escrowsRef.current.map(e => e.id.toString()));
-        const newIds = clientEscrows
-          .filter(e => !oldIds.has(e.id.toString()))
-          .map(e => e.id.toString());
-        if (newIds.length > 0) {
-          setJustConfirmedIds(new Set(newIds));
-          setTimeout(() => setJustConfirmedIds(new Set()), 3000);
-        }
-      }
-
       setEscrows(clientEscrows);
-      setPendingEscrows([]);
 
       // Fetch all escrows and filter for freelancer role
       const count = await contract.escrowCount();
@@ -176,18 +155,6 @@ export function useEscrow() {
 
   // Returns { submitted, wait } — submitted resolves once wallet signs (fast),
   // wait() returns a promise that resolves when the tx is mined (slow).
-  const addPendingEscrow = useCallback((freelancer: string, amount: string, client: string) => {
-    const pending: EscrowJob = {
-      id: BigInt(Date.now()), // temp ID
-      client,
-      freelancer,
-      amount: ethers.parseEther(amount),
-      status: -1, // special "pending" status
-      createdAt: BigInt(Math.floor(Date.now() / 1000)),
-    };
-    setPendingEscrows((prev) => [...prev, pending]);
-  }, []);
-
   const createEscrow = useCallback(async (freelancer: string, amountRBTC: string): Promise<{ submitted: boolean; wait: () => Promise<boolean> }> => {
     try {
       setLoading(true);
@@ -251,6 +218,7 @@ export function useEscrow() {
     setError(null);
   }, []);
 
+
   // Auto-reconnect if wallet was previously approved (no popup)
   useEffect(() => {
     if (!window.ethereum) return;
@@ -280,5 +248,5 @@ export function useEscrow() {
     };
   }, [disconnect]);
 
-  return { address, escrows, freelancerEscrows, pendingEscrows, justConfirmedIds, loading, error, connect, disconnect, fetchEscrows, createEscrow, addPendingEscrow, release, refund };
+  return { address, escrows, freelancerEscrows, loading, error, connect, disconnect, fetchEscrows, createEscrow, release, refund };
 }

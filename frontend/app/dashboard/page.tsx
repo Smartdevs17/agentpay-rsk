@@ -22,7 +22,7 @@ type VerifyResult = {
 };
 
 export default function DashboardPage() {
-  const { address, escrows, freelancerEscrows, pendingEscrows, justConfirmedIds, loading, error, fetchEscrows, release, refund } = useWallet();
+  const { address, escrows, freelancerEscrows, loading, error, fetchEscrows, release, refund } = useWallet();
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("client");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -43,10 +43,7 @@ export default function DashboardPage() {
   // Load scope data from localStorage whenever escrows change
   useEffect(() => {
     setScopeData(getAllScopes());
-    // Also check again after a short delay in case scope was saved right before fetch
-    const t = setTimeout(() => setScopeData(getAllScopes()), 500);
-    return () => clearTimeout(t);
-  }, [escrows, justConfirmedIds]);
+  }, [escrows]);
 
   const applyOptimistic = useCallback((list: EscrowJob[]) =>
     list.map((e) => {
@@ -160,7 +157,6 @@ export default function DashboardPage() {
 
   const getStatusLabel = (status: number) => {
     switch (status) {
-      case -1: return { label: "Confirming...", color: "text-rsk-orange", bg: "bg-rsk-orange/10" };
       case 0: return { label: "Funded", color: "text-rsk-yellow", bg: "bg-rsk-yellow/10" };
       case 1: return { label: "Released", color: "text-rsk-green", bg: "bg-rsk-green/10" };
       case 2: return { label: "Refunded", color: "text-red-400", bg: "bg-red-400/10" };
@@ -168,7 +164,7 @@ export default function DashboardPage() {
     }
   };
 
-  const clientList = [...(pendingEscrows ?? []), ...applyOptimistic(escrows ?? [])];
+  const clientList = applyOptimistic(escrows ?? []);
   const freelancerList = applyOptimistic(freelancerEscrows ?? []);
   const activeList = tab === "client" ? clientList : freelancerList;
   const isConnected = !!address;
@@ -288,15 +284,13 @@ export default function DashboardPage() {
             {activeList.map((escrow: EscrowJob) => {
               const status = getStatusLabel(Number(escrow.status));
               const id = escrow.id.toString();
-              const isPending = Number(escrow.status) === -1;
               const isFunded = Number(escrow.status) === 0;
-              const justConfirmed = justConfirmedIds?.has(id) ?? false;
               const isClient = tab === "client";
               const scope = scopeData[id];
               const isEditing = editingScopeId === id;
 
               return (
-                <GlassCard key={id} className={`flex flex-col p-6 h-full transition-all duration-300 ${justConfirmed ? "border-rsk-green/50 shadow-lg shadow-rsk-green/10 animate-confirm-flash" : isPending ? "border-rsk-orange/30 animate-pulse" : "border-white/5 hover:border-rsk-orange/30"}`}>
+                <GlassCard key={id} className="flex flex-col p-6 h-full transition-all duration-300 border-white/5 hover:border-rsk-orange/30">
                   {/* Header row */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shadow-inner">
@@ -421,13 +415,7 @@ export default function DashboardPage() {
                           <Clock className="h-3 w-3" />AWAITING RELEASE
                         </div>
                       )}
-                      {isPending && (
-                        <div className="w-full flex items-center justify-center gap-2 py-2 text-[10px] font-bold text-rsk-orange/60 bg-rsk-orange/5 rounded-lg border border-rsk-orange/10">
-                          <div className="w-3 h-3 border-2 border-rsk-orange/60 border-t-transparent rounded-full animate-spin" />
-                          CONFIRMING ON-CHAIN...
-                        </div>
-                      )}
-                      {!isFunded && !isPending && (
+                      {!isFunded && (
                         <div className="w-full flex items-center justify-center gap-2 py-2 text-[10px] font-bold text-white/20 bg-white/5 rounded-lg border border-white/5">
                           <CheckCircle2 className="h-3 w-3" />SETTLED
                         </div>
